@@ -18,6 +18,13 @@ client = OpenAI()
 
 def run_command(tool_input: dict):
     """
+    Executes one of the following commands:
+        - create_node_backend
+        - create_fastapi_backend
+        - create_react_app
+        - dockerize_project
+        - git_init
+    AND,
     Unified tool handler.
     tool_input is always a dict from the agent.
     """
@@ -52,20 +59,8 @@ def run_command(tool_input: dict):
     return "❌ Invalid input to run_command"
 
 
-def get_weather(city: str):
-    print("🔨 Tool Called: get_weather", city)
-    url = f"https://wttr.in/{city}?format=%C+%t"
-    response = requests.get(url)
-
-    if response.status_code == 200:
-        return f"The weather in {city} is {response.text}."
-    return "Something went wrong"
 
 avaiable_tools = {
-    "get_weather": {
-        "fn": get_weather,
-        "description": "Takes a city name as an input and returns the current weather for the city"
-    },
     "run_command": {
         "fn": run_command,
         "description": "Takes a command as input to execute on system and returns ouput"
@@ -84,6 +79,22 @@ system_prompt = f"""
     - Always perform one step at a time and wait for next input
     - Carefully analyse the user query
     - Every tool must accept ONE argument: a dict
+    - Extract key details (like project name) from the user's query
+    - if project name is not provided in the user query, add a default name based on the project type
+
+    IMPORTANT:
+        You MUST ONLY use the following commands when calling run_command.
+        Allowed commands:
+        - create_node_backend
+        - create_fastapi_backend
+        - create_react_app
+        - dockerize_project
+        - npm_install
+        - git_init
+        - create_folder
+
+        DO NOT invent new command names.
+        If the user wording is different, map it to the closest available command.
 
     Output JSON Format:
     {{
@@ -95,16 +106,8 @@ system_prompt = f"""
 
     Available Tools:
     - run_command: Takes a command as input to execute on system and returns ouput
-    
-    Example:
-    User Query: What is the weather of new york?
-    Output: {{ "step": "plan", "content": "The user is interseted in weather data of new york" }}
-    Output: {{ "step": "plan", "content": "From the available tools I should call get_weather" }}
-    Output: {{ "step": "action", "function": "get_weather", "input": "new york" }}
-    Output: {{ "step": "observe", "output": "12 Degree Cel" }}
-    Output: {{ "step": "output", "content": "The weather for new york seems to be 12 degrees." }}
 
-    Example 2:
+    Example 1:
     User Query: Create a nodejs backend project structure with the name backend-template
     Output: {{ "step": "plan", "content": "The user wants to create a nodejs backend project structure with the name backend-template" }}
     Output: {{ "step": "plan", "content": "From the available tools I should call run_command" }}
